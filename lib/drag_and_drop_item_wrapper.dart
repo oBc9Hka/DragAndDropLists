@@ -1,5 +1,6 @@
 import 'package:drag_and_drop_lists/drag_and_drop_lists.dart';
 import 'package:drag_and_drop_lists/measure_size.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 class DragAndDropItemWrapper extends StatefulWidget {
@@ -15,11 +16,21 @@ class DragAndDropItemWrapper extends StatefulWidget {
 
 class _DragAndDropItemWrapper extends State<DragAndDropItemWrapper>
     with TickerProviderStateMixin {
+  static final ValueNotifier<int> _activeItemDragCount = ValueNotifier<int>(0);
   DragAndDropItem? _hoveredDraggable;
 
   bool _dragging = false;
+  bool _isItemHoveredOnWeb = false;
   Size _containerSize = Size.zero;
   Size _dragHandleSize = Size.zero;
+
+  @override
+  void dispose() {
+    if (_dragging && _activeItemDragCount.value > 0) {
+      _activeItemDragCount.value--;
+    }
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -110,7 +121,7 @@ class _DragAndDropItemWrapper extends State<DragAndDropItemWrapper>
             ],
           ),
         );
-      } else if (widget.parameters!.dragOnLongPress) {
+      } else if (widget.parameters!.dragOnLongPress && !kIsWeb) {
         draggable = MeasureSize(
           onSizeChange: _setContainerSize,
           child: LongPressDraggable<DragAndDropItem>(
@@ -180,7 +191,7 @@ class _DragAndDropItemWrapper extends State<DragAndDropItemWrapper>
         child: _hoveredDraggable != null ? Container() : widget.child.child,
       );
     }
-    return Stack(
+    final stack = Stack(
       children: <Widget>[
         Column(
           mainAxisSize: MainAxisSize.min,
@@ -202,50 +213,56 @@ class _DragAndDropItemWrapper extends State<DragAndDropItemWrapper>
               onPointerMove: _onPointerMove,
               onPointerDown: widget.parameters!.onPointerDown,
               onPointerUp: widget.parameters!.onPointerUp,
-              child: draggable,
+              child: _wrapDraggableForWeb(draggable),
             ),
           ],
         ),
         Positioned.fill(
-          child: DragTarget<DragAndDropItem>(
-            builder: (context, candidateData, rejectedData) {
-              if (candidateData.isNotEmpty) {}
-              return Container();
-            },
-            onWillAcceptWithDetails: (details) {
-              bool accept = true;
-              if (widget.parameters!.itemOnWillAccept != null) {
-                accept = widget.parameters!.itemOnWillAccept!(
-                    details.data, widget.child);
-              }
-              if (accept && mounted) {
-                setState(() {
-                  _hoveredDraggable = details.data;
-                });
-              }
-              return accept;
-            },
-            onLeave: (data) {
-              if (mounted) {
-                setState(() {
-                  _hoveredDraggable = null;
-                });
-              }
-            },
-            onAcceptWithDetails: (details) {
-              if (mounted) {
-                setState(() {
-                  if (widget.parameters!.onItemReordered != null) {
-                    widget.parameters!.onItemReordered!(details.data, widget.child);
-                  }
-                  _hoveredDraggable = null;
-                });
-              }
-            },
+          child: _wrapDragTargetForWeb(
+            DragTarget<DragAndDropItem>(
+              builder: (context, candidateData, rejectedData) {
+                if (candidateData.isNotEmpty) {}
+                return Container();
+              },
+              onWillAcceptWithDetails: (details) {
+                bool accept = true;
+                if (widget.parameters!.itemOnWillAccept != null) {
+                  accept = widget.parameters!.itemOnWillAccept!(
+                      details.data, widget.child);
+                }
+                if (accept && mounted) {
+                  setState(() {
+                    _hoveredDraggable = details.data;
+                  });
+                }
+                return accept;
+              },
+              onLeave: (data) {
+                if (mounted) {
+                  setState(() {
+                    _hoveredDraggable = null;
+                  });
+                }
+              },
+              onAcceptWithDetails: (details) {
+                if (mounted) {
+                  setState(() {
+                    if (widget.parameters!.onItemReordered != null) {
+                      widget.parameters!.onItemReordered!(
+                        details.data,
+                        widget.child,
+                      );
+                    }
+                    _hoveredDraggable = null;
+                  });
+                }
+              },
+            ),
           ),
-        )
+        ),
       ],
     );
+    return _wrapItemStackForWeb(stack);
   }
 
   Offset _feedbackContainerOffset() {
@@ -278,7 +295,11 @@ class _DragAndDropItemWrapper extends State<DragAndDropItemWrapper>
     if (_dragging != dragging && mounted) {
       setState(() {
         _dragging = dragging;
+        if (dragging) {
+          _isItemHoveredOnWeb = false;
+        }
       });
+      _updateActiveDragCount(dragging);
       if (widget.parameters!.onItemDraggingChanged != null) {
         widget.parameters!.onItemDraggingChanged!(widget.child, dragging);
       }
@@ -287,5 +308,127 @@ class _DragAndDropItemWrapper extends State<DragAndDropItemWrapper>
 
   void _onPointerMove(PointerMoveEvent event) {
     if (_dragging) widget.parameters!.onPointerMove!(event);
+  }
+
+  Widget _wrapDraggableForWeb(Widget draggable) {
+    if (!kIsWeb || !widget.child.canDrag || widget.parameters!.itemDragHandle != null) {
+      return draggable;
+    }
+    return ValueListenableBuilder<int>(
+      valueListenable: _activeItemDragCount,
+      builder: (context, activeDragCount, child) {
+        final isAnyItemDragging = activeDragCount > 0;
+        final isHovered = _isItemHoveredOnWeb &&
+            !_dragging &&
+            !isAnyItemDragging;
+        final shouldHighlight =
+            isHovered && widget.parameters!.itemHighlightOnHoverOnWeb;
+        final cursor = _dragging
+            ? widget.parameters!.itemDraggingMouseCursor
+            : (isAnyItemDragging
+                ? widget.parameters!.itemDraggingMouseCursor
+                : widget.parameters!.itemMouseCursor);
+
+        final hoverDecoration = widget.parameters!.itemDecorationOnHover ??
+            BoxDecoration(
+              border: Border.all(
+                color: Theme.of(context).colorScheme.primary,
+                width: 1.5,
+              ),
+              borderRadius: BorderRadius.circular(6),
+            );
+
+        return MouseRegion(
+          cursor: cursor,
+          opaque: true,
+          onEnter: (_) => _setItemHoveredOnWeb(true),
+          onExit: (_) => _setItemHoveredOnWeb(false),
+          child: _dragging
+              ? const SizedBox.shrink()
+              : TweenAnimationBuilder<Decoration>(
+                  duration: Duration(
+                    milliseconds: widget
+                        .parameters!.itemHoverAnimationDurationMilliseconds,
+                  ),
+                  curve: Curves.easeOut,
+                  tween: DecorationTween(
+                    begin: const BoxDecoration(),
+                    end: shouldHighlight ? hoverDecoration : const BoxDecoration(),
+                  ),
+                  child: draggable,
+                  builder: (context, decoration, child) {
+                    return DecoratedBox(
+                      decoration: decoration,
+                      child: child,
+                    );
+                  },
+                ),
+        );
+      },
+    );
+  }
+
+  Widget _wrapItemStackForWeb(Widget child) {
+    if (!kIsWeb || !widget.child.canDrag || widget.parameters!.itemDragHandle != null) {
+      return child;
+    }
+
+    return ValueListenableBuilder<int>(
+      valueListenable: _activeItemDragCount,
+      builder: (context, activeDragCount, _) {
+        final isAnyItemDragging = activeDragCount > 0;
+        final cursor = _dragging
+            ? widget.parameters!.itemDraggingMouseCursor
+            : (isAnyItemDragging
+                ? widget.parameters!.itemDraggingMouseCursor
+                : widget.parameters!.itemMouseCursor);
+
+        return MouseRegion(
+          cursor: cursor,
+          opaque: false,
+          onEnter: (_) => _setItemHoveredOnWeb(true),
+          onExit: (_) => _setItemHoveredOnWeb(false),
+          child: child,
+        );
+      },
+    );
+  }
+
+  Widget _wrapDragTargetForWeb(Widget child) {
+    if (!kIsWeb || !widget.child.canDrag || widget.parameters!.itemDragHandle != null) {
+      return child;
+    }
+
+    return ValueListenableBuilder<int>(
+      valueListenable: _activeItemDragCount,
+      builder: (context, activeDragCount, _) {
+        final isAnyItemDragging = activeDragCount > 0;
+        final cursor = isAnyItemDragging
+            ? widget.parameters!.itemDraggingMouseCursor
+            : widget.parameters!.itemMouseCursor;
+
+        return MouseRegion(
+          cursor: cursor,
+          opaque: false,
+          child: child,
+        );
+      },
+    );
+  }
+
+  void _setItemHoveredOnWeb(bool hovered) {
+    if (_isItemHoveredOnWeb != hovered && mounted) {
+      setState(() {
+        _isItemHoveredOnWeb = hovered;
+      });
+    }
+  }
+
+  void _updateActiveDragCount(bool dragging) {
+    if (dragging) {
+      _activeItemDragCount.value++;
+    } else if (_activeItemDragCount.value > 0) {
+      _activeItemDragCount.value--;
+    }
   }
 }

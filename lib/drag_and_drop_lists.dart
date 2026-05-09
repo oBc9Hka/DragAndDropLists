@@ -175,6 +175,23 @@ class DragAndDropLists extends StatefulWidget {
   /// The decoration surrounding an item while it is in the process of being dragged.
   final Decoration? itemDecorationWhileDragging;
 
+  /// If true, draggable items are highlighted on hover when running on web.
+  final bool itemHighlightOnHoverOnWeb;
+
+  /// The decoration to apply when a draggable item is hovered on web.
+  /// If null, a default border decoration is applied when
+  /// [itemHighlightOnHoverOnWeb] is true.
+  final Decoration? itemDecorationOnHover;
+
+  /// Duration of the hover animation for item highlight on web.
+  final int itemHoverAnimationDurationMilliseconds;
+
+  /// Mouse cursor shown on draggable item hover.
+  final MouseCursor itemMouseCursor;
+
+  /// Mouse cursor shown while the draggable item is actively dragging.
+  final MouseCursor itemDraggingMouseCursor;
+
   /// A widget that will be displayed between each individual item.
   final Widget? itemDivider;
 
@@ -308,6 +325,11 @@ class DragAndDropLists extends StatefulWidget {
     this.itemSizeAnimationDurationMilliseconds = 150,
     this.itemDragOnLongPress = true,
     this.itemDecorationWhileDragging,
+    this.itemHighlightOnHoverOnWeb = true,
+    this.itemDecorationOnHover,
+    this.itemHoverAnimationDurationMilliseconds = 150,
+    this.itemMouseCursor = SystemMouseCursors.click,
+    this.itemDraggingMouseCursor = SystemMouseCursors.grabbing,
     this.itemDivider,
     this.listDraggingWidth,
     this.listTarget,
@@ -408,6 +430,12 @@ class DragAndDropListsState extends State<DragAndDropLists> {
       itemGhostOpacity: widget.itemGhostOpacity,
       itemDivider: widget.itemDivider,
       itemDecorationWhileDragging: widget.itemDecorationWhileDragging,
+      itemHighlightOnHoverOnWeb: widget.itemHighlightOnHoverOnWeb,
+      itemDecorationOnHover: widget.itemDecorationOnHover,
+      itemHoverAnimationDurationMilliseconds:
+          widget.itemHoverAnimationDurationMilliseconds,
+      itemMouseCursor: widget.itemMouseCursor,
+      itemDraggingMouseCursor: widget.itemDraggingMouseCursor,
       verticalAlignment: widget.verticalAlignment,
       axis: widget.axis,
       itemGhost: widget.itemGhost,

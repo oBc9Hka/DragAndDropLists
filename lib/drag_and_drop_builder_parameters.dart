@@ -42,6 +42,11 @@ class DragAndDropBuilderParameters {
   final Widget? itemDivider;
   final double? itemDraggingWidth;
   final Decoration? itemDecorationWhileDragging;
+  final bool itemHighlightOnHoverOnWeb;
+  final Decoration? itemDecorationOnHover;
+  final int itemHoverAnimationDurationMilliseconds;
+  final MouseCursor itemMouseCursor;
+  final MouseCursor itemDraggingMouseCursor;
   final int listSizeAnimationDuration;
   final Widget? listGhost;
   final double listGhostOpacity;
@@ -80,6 +85,11 @@ class DragAndDropBuilderParameters {
     this.itemDivider,
     this.itemDraggingWidth,
     this.itemDecorationWhileDragging,
+    this.itemHighlightOnHoverOnWeb = true,
+    this.itemDecorationOnHover,
+    this.itemHoverAnimationDurationMilliseconds = 150,
+    this.itemMouseCursor = SystemMouseCursors.grab,
+    this.itemDraggingMouseCursor = SystemMouseCursors.grabbing,
     this.listSizeAnimationDuration = 150,
     this.listGhostOpacity = 0.3,
     this.listGhost,

@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.4.3] - 9 May 2026
+
+# Web item drag UX
+
+When using `DragAndDropItem` without a custom `itemDragHandle`, web now supports:
+- immediate drag on mouse press (instead of long press),
+- mouse cursor changes for draggable items,
+- optional hover highlight with animation.
+
+These options can be customized on `DragAndDropLists`:
+- `itemHighlightOnHoverOnWeb` (default: `true`)
+- `itemDecorationOnHover` (default: a border using theme primary color)
+- `itemHoverAnimationDurationMilliseconds` (default: `150`)
+- `itemMouseCursor` (default: `SystemMouseCursors.grab`)
+- `itemDraggingMouseCursor` (default: `SystemMouseCursors.grabbing`)
+
+Mobile behavior is unchanged. `itemDragOnLongPress` still controls whether item drag starts on long press or immediately.
+
 [0.4.2] - 26 November 2024
 
 * Add key getter to drag and drop list interface (thanks [@juancdominici](https://github.com/juancdominici))

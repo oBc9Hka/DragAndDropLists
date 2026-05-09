@@ -57,6 +57,11 @@ class _HorizontalExample extends State<HorizontalExample> {
           ],
         ),
         listPadding: const EdgeInsets.all(8.0),
+        itemDecorationOnHover: BoxDecoration(
+          borderRadius: BorderRadius.circular(4),
+          color: Colors.pink.withValues(alpha: 0.1),
+        ),
+        itemHoverAnimationDurationMilliseconds: 150,
       ),
     );
   }
